@@ -4,11 +4,14 @@
   "type": "module",
   "scripts": {
     "dev": "node --watch --env-file=.env src/index.js",
-    "start": "node --env-file=.env src/index.js",
-    "seed": "node --env-file=.env src/utils/seed.js"
+    "start": "node src/index.js",
+    "start:local": "node --env-file=.env src/index.js",
+    "seed": "node --env-file=.env src/utils/seed.js",
+    "seed:chat": "node --env-file=.env src/utils/seed-chat.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
+    "cloudinary": "^2.11.0",
     "cors": "^2.8.5",
     "exceljs": "^4.4.0",
     "express": "^4.19.2",

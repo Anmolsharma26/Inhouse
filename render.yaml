@@ -1,0 +1,59 @@
+# Render blueprint: one free web service that runs the API + live chat and serves the React app.
+# In Render: New + -> Blueprint -> pick this repository. Values marked "sync: false" are asked for during setup.
+services:
+  - type: web
+    name: radiantmap
+    runtime: node
+    plan: free
+    region: singapore           # closest free region to India
+    buildCommand: npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      - key: TZ
+        value: Asia/Kolkata      # attendance "today", late arrivals and daily totals use this timezone
+      - key: JWT_SECRET
+        generateValue: true      # Render creates a long random secret
+      - key: JWT_EXPIRES_IN
+        value: 8h
+      # --- MySQL (TiDB Cloud Serverless / Aiven) ---
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_NAME
+        sync: false
+      - key: DB_SSL
+        value: "true"
+      # --- file uploads: cloudinary://<api_key>:<api_secret>@<cloud_name> ---
+      - key: CLOUDINARY_URL
+        sync: false
+      # --- the public address of the app, e.g. https://radiantmap.onrender.com ---
+      - key: CLIENT_ORIGIN
+        sync: false
+      # --- first admin account (created only when the database has no admin yet) ---
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_NAME
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      # --- business rules ---
+      - key: WORKDAY_MINUTES
+        value: "480"
+      - key: LATE_AFTER
+        value: "09:30"
+      - key: MAX_UPLOAD_MB
+        value: "10"
+      - key: MAX_SHIFT_HOURS
+        value: "12"
+      - key: ACTIVITY_RETENTION_DAYS
+        value: "180"

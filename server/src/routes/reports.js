@@ -46,8 +46,14 @@ router.get('/timesheets/export.xlsx', requireRole('admin', 'manager'), wrap(asyn
     { header: 'Employee', key: 'name', width: 24 }, { header: 'Department', key: 'department', width: 18 },
     { header: 'Date', key: 'date', width: 12 }, { header: 'Worked (h)', key: 'hours', width: 12 },
     { header: 'Overtime (h)', key: 'ot', width: 12 }, { header: 'Late', key: 'late', width: 8 },
+    { header: 'Break (h)', key: 'brk', width: 10 }, { header: 'Active in app (h)', key: 'act', width: 16 },
+    { header: 'Idle in app (h)', key: 'idle', width: 14 }, { header: 'Notes', key: 'notes', width: 30 },
   ];
-  rows.forEach((r) => ws.addRow({ ...r, hours: +(r.minutes / 60).toFixed(2), ot: +(r.overtimeMinutes / 60).toFixed(2), late: r.late ? 'Yes' : 'No' }));
+  const h = (m) => +((m || 0) / 60).toFixed(2);
+  rows.forEach((r) => ws.addRow({
+    ...r, hours: h(r.minutes), ot: h(r.overtimeMinutes), late: r.late ? 'Yes' : 'No', brk: h(r.breakMinutes), act: h(r.activeMinutes), idle: h(r.idleMinutes),
+    notes: [r.autoClosed && 'Auto clock-out', r.manual && 'Manual entry', r.open && 'Still clocked in'].filter(Boolean).join(', '),
+  }));
   ws.getRow(1).font = { bold: true };
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   res.setHeader('Content-Disposition', `attachment; filename="timesheets_${from}_${to}.xlsx"`);

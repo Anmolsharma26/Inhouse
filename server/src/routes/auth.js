@@ -6,6 +6,7 @@ import { User } from '../models/index.js';
 import { requireAuth } from '../middleware/auth.js';
 import { wrap } from '../middleware/error.js';
 import { httpError } from '../utils/helpers.js';
+import { logEvent } from '../utils/activity.js';
 
 const router = Router();
 const sign = (u) => jwt.sign({ id: u.id }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || '8h' });
@@ -15,6 +16,7 @@ router.post('/login', wrap(async (req, res) => {
   const user = await User.scope('withSecrets').findOne({ where: { email: String(email || '').toLowerCase() } });
   if (!user || !user.isActive || !(await user.matchPassword(String(password || '')))) throw httpError(401, 'Invalid credentials');
   const safe = await User.findByPk(user.id);
+  await logEvent(user.id, 'login', null, req);
   res.json({ token: sign(user), user: safe });
 }));
 

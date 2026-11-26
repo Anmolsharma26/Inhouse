@@ -44,7 +44,8 @@ Demo logins (from the seed – change before real use):
 | Manager | manager@radiantmap.com | Manager@12345 |
 | Employee | ethan@radiantmap.com | Employee@12345 |
 
-> `npm run seed` **wipes all tables**. Never run it against real data.
+> `npm run seed` **wipes all tables**, so it refuses to run once any chat messages exist (override with `npm run seed -- --force`).
+> `npm run seed:chat` adds sample conversations/messages **without deleting anything** (only fills empty conversations).
 
 ## What's implemented
 
@@ -52,10 +53,11 @@ Demo logins (from the seed – change before real use):
 | --- | --- |
 | User management (create, roles, activate/deactivate, directory) | Working. Edit-user screen is a TODO |
 | Auth (JWT, bcrypt, forgot/reset password) | Working. Reset link is printed to the server console; **email sending is a TODO** |
-| Chat: 1:1, channels, realtime, typing, presence, unread counts, read ticks, attachments | Working |
-| Chat: groups, reactions, edit/delete, replies, search | Server + socket events done and tested; **UI not built yet** |
-| Time tracking: clock in/out, breaks, daily totals, late + overtime flags, manual requests + approval | Working |
-| Tasks: assign, priority, due date, status board, overdue, comments API | Working. Task detail/comment UI is a TODO |
+| Chat: 1:1, groups, channels, realtime, typing, presence, unread counts, read ticks, attachments, replies, reactions, edit/delete, search, message history ("Load older messages") | Working. All messages are stored in MySQL (`Messages` table); deletes are soft (row kept) |
+| Time tracking: clock in/out, breaks, live timer, daily totals, late + overtime flags, manual requests (validated, no overlaps) + approval, auto clock-out of forgotten entries | Working |
+| Activity tracking (in-app only): active / idle / background-tab minutes via 30 s heartbeats, logins, clock events, page visits, task + chat actions; Team Activity page for managers; employees see their own totals | Working. Stored in `ActivityDaily` + `ActivityEvents` |
+| Tasks: assign, priority, project, start/due date, estimated hours, tags, checklist, attachments, status board, filters, overdue | Working |
+| Task comments + activity log (assignee and task owner/manager can both comment, live updates) | Working. Stored in the `TaskComments` table; deletes are soft |
 | Admin dashboard, timesheet reports, Excel export | Working. **PDF export is a TODO** |
 
 ## Tested
@@ -80,6 +82,8 @@ client/src
 ```
 
 ## Decisions to confirm with RadiantMap
+
+- Activity tracking: tell employees in writing what is recorded (the app also shows a notice on the Time page) and confirm `ACTIVITY_RETENTION_DAYS` (default 180) and `MAX_SHIFT_HOURS` (default 12) in `server/.env`. Idle = no mouse/keyboard for 5 minutes (`IDLE_MS` in `client/src/activity.js`).
 
 - Workday length, late-arrival cut-off and overtime rule: `WORKDAY_MINUTES` / `LATE_AFTER` in `server/.env`.
 - Whether managers may approve manual time entries: per-user `canApproveTime` flag.

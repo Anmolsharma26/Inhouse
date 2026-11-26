@@ -2,6 +2,15 @@ import { connectDB, sequelize } from '../config/db.js';
 import { User, Conversation, ConversationMember } from '../models/index.js';
 
 await connectDB();
+// Safety: refuse to wipe a database that already has chat history unless explicitly forced.
+const [[{ n }]] = await sequelize.query('SELECT COUNT(*) AS n FROM Messages');
+if (Number(n) > 0 && !process.argv.includes('--force')) {
+  console.error(`Refusing to seed: the database already contains ${n} chat message(s), and seeding would DELETE them.\n` +
+    'To add sample chat data without deleting anything, run:  npm run seed:chat\n' +
+    'To really wipe everything, run:  npm run seed -- --force');
+  await sequelize.close();
+  process.exit(1);
+}
 await sequelize.sync({ force: true }); // wipes all tables – demo data only!
 
 const admin = await User.create({ name: 'Admin User', email: 'admin@radiantmap.com', password: 'Admin@12345', role: 'admin', department: 'Management', designation: 'Administrator', joinedAt: new Date() });

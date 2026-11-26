@@ -1,13 +1,19 @@
-import { NavLink, Outlet } from 'react-router-dom';
+import { useEffect } from 'react';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { logout } from '../store/authSlice';
+import { startActivityTracking, stopActivityTracking, trackPage, trackLogout } from '../activity';
 
 export default function Layout() {
   const dispatch = useDispatch();
   const user = useSelector((s) => s.auth.user);
+  const location = useLocation();
+  useEffect(() => { startActivityTracking(); return stopActivityTracking; }, []);
+  useEffect(() => { trackPage(location.pathname); }, [location.pathname]);
+  const doLogout = async () => { stopActivityTracking(); await trackLogout(); dispatch(logout()); };
   const links = [
     ['/', 'Dashboard'], ['/chat', 'Chat'], ['/time', 'Time & Attendance'], ['/tasks', 'Tasks'], ['/employees', 'Directory'],
-    ...(user.role !== 'employee' ? [['/admin', 'Reports']] : []),
+    ...(user.role !== 'employee' ? [['/activity', 'Team Activity'], ['/admin', 'Reports']] : []),
   ];
   return (
     <div className="flex min-h-screen flex-col md:flex-row">
@@ -24,7 +30,7 @@ export default function Layout() {
         <div className="mt-4 border-t pt-4 text-sm">
           <p className="font-medium">{user.name}</p>
           <p className="mb-2 capitalize text-slate-500">{user.role}</p>
-          <button className="btn-ghost w-full" onClick={() => dispatch(logout())}>Log out</button>
+          <button className="btn-ghost w-full" onClick={doLogout}>Log out</button>
         </div>
       </aside>
       <main className="flex-1 p-4 md:p-6"><Outlet /></main>

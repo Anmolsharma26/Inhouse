@@ -46,7 +46,7 @@ export default function Admin() {
           {err && <p className="text-sm text-red-600">{err}</p>}
           {pending.map((p) => (
             <div key={p.id} className="flex flex-wrap items-center justify-between gap-2 border-t py-2 text-sm">
-              <span>{p.User.name} · {p.date} · {p.reason}</span>
+              <span>{p.User.name} · {p.date} · {new Date(p.clockIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}–{new Date(p.clockOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} ({fmt(Math.round((new Date(p.clockOut) - new Date(p.clockIn)) / 60000))}) · {p.reason}</span>
               <span className="flex gap-2"><button className="btn" onClick={() => review(p.id, 'approved')}>Approve</button><button className="btn-ghost" onClick={() => review(p.id, 'rejected')}>Reject</button></span>
             </div>
           ))}
@@ -62,12 +62,12 @@ export default function Admin() {
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
-            <thead className="text-slate-500"><tr><th className="py-2">Employee</th><th>Dept</th><th>Date</th><th>Worked</th><th>Overtime</th><th>Late</th></tr></thead>
+            <thead className="text-slate-500"><tr><th className="py-2">Employee</th><th>Dept</th><th>Date</th><th>Worked</th><th>Overtime</th><th>Break</th><th>Active in app</th><th>Idle</th><th>Flags</th></tr></thead>
             <tbody>
               {rows.map((r) => (
-                <tr key={r.userId + r.date} className="border-t"><td className="py-2">{r.name}</td><td>{r.department}</td><td>{r.date}</td><td>{fmt(r.minutes)}</td><td>{r.overtimeMinutes ? fmt(r.overtimeMinutes) : '—'}</td><td>{r.late ? 'Yes' : ''}</td></tr>
+                <tr key={r.userId + r.date} className="border-t"><td className="py-2">{r.name}</td><td>{r.department}</td><td>{r.date}</td><td>{fmt(r.minutes)}</td><td>{r.overtimeMinutes ? fmt(r.overtimeMinutes) : '—'}</td><td>{r.breakMinutes ? fmt(r.breakMinutes) : '—'}</td><td>{fmt(r.activeMinutes || 0)}</td><td>{fmt(r.idleMinutes || 0)}</td><td className="text-xs">{[r.late && 'Late', r.autoClosed && 'Auto clock-out', r.manual && 'Manual', r.open && 'Working'].filter(Boolean).join(', ')}</td></tr>
               ))}
-              {rows.length === 0 && <tr><td colSpan="6" className="py-4 text-slate-500">No data for this range.</td></tr>}
+              {rows.length === 0 && <tr><td colSpan="9" className="py-4 text-slate-500">No data for this range.</td></tr>}
             </tbody>
           </table>
         </div>

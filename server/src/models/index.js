@@ -61,6 +61,8 @@ export const TimeEntry = sequelize.define('TimeEntry', {
   breaks: { type: T.JSON, defaultValue: [] },   // [{start,end}]
   taskId: T.INTEGER,
   source: { type: T.ENUM('clock', 'manual'), defaultValue: 'clock' },
+  autoClosed: { type: T.BOOLEAN, defaultValue: false }, // closed by the system because the user forgot to clock out
+  note: T.STRING(300),
 }, { indexes: [{ fields: ['UserId', 'date'] }] });
 
 TimeEntry.prototype.workedMinutes = function (now = new Date()) {
@@ -89,10 +91,54 @@ export const Task = sequelize.define('Task', {
   dueDate: T.DATE,
   priority: { type: T.ENUM('low', 'medium', 'high'), defaultValue: 'medium' },
   status: { type: T.ENUM('pending', 'in_progress', 'completed'), defaultValue: 'pending' },
-  comments: { type: T.JSON, defaultValue: [] }, // [{userId,name,text,createdAt}]
-  attachments: { type: T.JSON, defaultValue: [] },
+  comments: { type: T.JSON, defaultValue: [] }, // LEGACY – comments now live in the TaskComments table
+  attachments: { type: T.JSON, defaultValue: [] }, // [{url,name,mime,size}]
   completedAt: T.DATE,
+  // Extra task details (added to existing databases by the migration in config/db.js)
+  project: T.STRING(120),
+  startDate: T.DATEONLY,
+  estimatedHours: T.DECIMAL(6, 2),
+  tags: { type: T.JSON, defaultValue: [] },      // ['frontend', 'bug']
+  checklist: { type: T.JSON, defaultValue: [] }, // [{id,text,done}]
 });
+
+// Comments + activity log on a task, one row per entry (kept permanently; deletes are soft)
+export const TaskComment = sequelize.define('TaskComment', {
+  kind: { type: T.ENUM('comment', 'activity'), defaultValue: 'comment' },
+  text: { type: T.TEXT, allowNull: false },
+  attachments: { type: T.JSON, defaultValue: [] },
+  editedAt: T.DATE,
+  deletedAt: T.DATE,
+}, { indexes: [{ fields: ['TaskId', 'createdAt'] }] });
+
+// ---------- Activity tracking (in-app only) ----------
+// Discrete events: login, logout, clock_in, clock_out, break_start, break_end, page_view, idle_start, idle_end,
+// task_created, task_updated, task_comment, message_sent, manual_request, auto_clock_out
+export const ActivityEvent = sequelize.define('ActivityEvent', {
+  type: { type: T.STRING(40), allowNull: false },
+  detail: T.STRING(300),
+  path: T.STRING(200),
+  ip: T.STRING(64),
+  userAgent: T.STRING(300),
+}, { updatedAt: false, indexes: [{ fields: ['UserId', 'createdAt'] }, { fields: ['createdAt'] }] });
+
+// One row per user per day, filled by 30-second heartbeats from the open app.
+// active = using the app, idle = app in front but no input for IDLE_MINUTES, away = app open in a background tab.
+// work* = the same, counted only while clocked in and not on break.
+export const ActivityDaily = sequelize.define('ActivityDaily', {
+  date: { type: T.DATEONLY, allowNull: false },
+  activeMinutes: { type: T.INTEGER, defaultValue: 0 },
+  idleMinutes: { type: T.INTEGER, defaultValue: 0 },
+  awayMinutes: { type: T.INTEGER, defaultValue: 0 },
+  workActiveMinutes: { type: T.INTEGER, defaultValue: 0 },
+  workIdleMinutes: { type: T.INTEGER, defaultValue: 0 },
+  workAwayMinutes: { type: T.INTEGER, defaultValue: 0 },
+  firstSeen: T.DATE,
+  lastSeen: T.DATE,
+  lastState: T.STRING(10),
+  lastPath: T.STRING(200),
+  pages: { type: T.JSON, defaultValue: {} }, // { '/chat': 12, '/tasks': 30 } active minutes per page
+}, { tableName: 'ActivityDaily', indexes: [{ unique: true, fields: ['UserId', 'date'] }] });
 
 // ---------- Associations ----------
 User.belongsTo(User, { as: 'manager', foreignKey: 'managerId' });
@@ -109,6 +155,8 @@ Conversation.hasMany(Message);
 Message.belongsTo(User, { as: 'sender', foreignKey: 'senderId' });
 Message.belongsTo(Message, { as: 'replyTo', foreignKey: 'replyToId' });
 
+ActivityEvent.belongsTo(User);
+ActivityDaily.belongsTo(User);
 TimeEntry.belongsTo(User);
 User.hasMany(TimeEntry);
 ManualTimeRequest.belongsTo(User);
@@ -117,3 +165,6 @@ ManualTimeRequest.belongsTo(User, { as: 'reviewer', foreignKey: 'reviewedBy' });
 Task.belongsTo(User, { as: 'assignee', foreignKey: 'assigneeId' });
 Task.belongsTo(User, { as: 'creator', foreignKey: 'createdBy' });
 User.hasMany(Task, { as: 'tasks', foreignKey: 'assigneeId' });
+Task.hasMany(TaskComment, { as: 'commentList', onDelete: 'CASCADE' });
+TaskComment.belongsTo(Task);
+TaskComment.belongsTo(User, { as: 'author', foreignKey: 'authorId' });

@@ -10,6 +10,7 @@ import Timesheet from './pages/Timesheet';
 import Tasks from './pages/Tasks';
 import Employees from './pages/Employees';
 import Admin from './pages/Admin';
+import Activity from './pages/Activity';
 
 function Protected({ roles, children }) {
   const { user, status } = useSelector((s) => s.auth);
@@ -32,6 +33,7 @@ export default function App() {
         <Route path="time" element={<Timesheet />} />
         <Route path="tasks" element={<Tasks />} />
         <Route path="employees" element={<Employees />} />
+        <Route path="activity" element={<Protected roles={['admin', 'manager']}><Activity /></Protected>} />
         <Route path="admin" element={<Protected roles={['admin', 'manager']}><Admin /></Protected>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
